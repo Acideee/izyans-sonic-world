@@ -30,6 +30,10 @@ Config.Super = {
 	FlySpeed = 55, -- hold jump in the air to fly upwards
 	RingDrainPerSecond = 1,
 	Color = Color3.fromRGB(255, 214, 40),
+	-- The transformation: power up while lifting off, then BAM!, then hover.
+	PowerUpTime = 1.8,
+	HoverTime = 1.0,
+	LiftHeight = 6,
 }
 
 Config.Rings = {
@@ -61,6 +65,8 @@ Config.Sounds = {
 	Emerald = "rbxasset://sounds/victory.wav",
 	Hurt = "rbxasset://sounds/uuhhh.mp3",
 	Badnik = "rbxasset://sounds/electronicpingshort.wav",
+	PowerUp = "rbxasset://sounds/electronicpingshort.wav", -- plays faster and higher while charging
+	SuperBam = "rbxasset://sounds/swoosh.wav",
 	Music = "",
 	SuperMusic = "",
 }

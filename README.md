@@ -47,8 +47,11 @@ smash robots, find all **7 Chaos Emeralds**, then collect 50 rings and turn into
 | Purple | Top of the **Checker Tower** |
 | White | End of the **Speedway** (dash pads, then the launch spring) |
 
-Each emerald also gives +10 rings. With all 7 emeralds and 50 rings, press **E** / **GO SUPER!**:
-Sonic turns gold, gets much faster, flies, and can't be hurt. Super form uses 1 ring per second.
+Each emerald also gives +10 rings. With all 7 emeralds and 50 rings, press **E** / **GO SUPER!**
+to transform: Sonic lifts off the ground, looks up and pushes his arms down while the 7 Chaos
+Emeralds circle him faster and faster, then **BAM!** a flash and a golden shockwave, and he's
+Super Sonic, wrapped in a golden aura. As Super Sonic he's much faster, flies, and can't be
+hurt. Super form uses 1 ring per second.
 
 ## The Sonic character
 

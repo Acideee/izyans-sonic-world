@@ -250,7 +250,18 @@ GoSuper.OnServerEvent:Connect(function(player)
 		Notify:FireClient(player, "Message", ("You need %d rings to go Super!"):format(Config.Super.RingsNeeded))
 		return
 	end
-	setSuper(player, true)
+	if player:GetAttribute("PoweringUp") then
+		return
+	end
+	-- Power up first (the client plays the lift-off and emeralds), then BAM!
+	player:SetAttribute("PoweringUp", true)
+	Notify:FireClient(player, "PowerUp", Config.Super.PowerUpTime)
+	task.delay(Config.Super.PowerUpTime, function()
+		player:SetAttribute("PoweringUp", false)
+		if player.Parent and player.Character then
+			setSuper(player, true)
+		end
+	end)
 end)
 
 -- Super form slowly uses up rings, just like in the real games.

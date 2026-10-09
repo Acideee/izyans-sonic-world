@@ -167,15 +167,15 @@ function SonicLook.setSuper(character, on, isSuperModel)
 	if glow then
 		glow:Destroy()
 	end
-	if on and usesImportedModel() and not isSuperModel then
-		-- Imported models are textured, so instead of recolouring them we wrap
-		-- them in a golden glow.
+	if on then
+		-- Golden outline around him. An imported blue Sonic (with no Super model
+		-- to swap to) is also tinted gold, since textures can't be recoloured.
 		local highlight = Instance.new("Highlight")
 		highlight.Name = "SuperGlow"
 		highlight.FillColor = GOLD
-		highlight.FillTransparency = 0.35
-		highlight.OutlineColor = Color3.fromRGB(255, 250, 200)
-		highlight.OutlineTransparency = 0.2
+		highlight.FillTransparency = (usesImportedModel() and not isSuperModel) and 0.35 or 1
+		highlight.OutlineColor = Color3.fromRGB(255, 225, 90)
+		highlight.OutlineTransparency = 0
 		highlight.DepthMode = Enum.HighlightDepthMode.Occluded
 		highlight.Parent = character
 	end
@@ -183,7 +183,7 @@ function SonicLook.setSuper(character, on, isSuperModel)
 	if not root then
 		return
 	end
-	for _, name in ipairs({ "SuperLight", "SuperSparkles" }) do
+	for _, name in ipairs({ "SuperLight", "SuperSparkles", "SuperAuraShell" }) do
 		local old = root:FindFirstChild(name)
 		if old then
 			old:Destroy()
@@ -210,6 +210,52 @@ function SonicLook.setSuper(character, on, isSuperModel)
 	sparkle.Speed = NumberRange.new(3, 7)
 	sparkle.SpreadAngle = Vector2.new(180, 180)
 	sparkle.Parent = root
+
+	-- The golden aura: soft flames rising all around his body, from an
+	-- invisible body-sized shell welded to him.
+	local shell = Instance.new("Part")
+	shell.Name = "SuperAuraShell"
+	shell.Size = Vector3.new(3.2, 5.6, 3.2)
+	shell.Transparency = 1
+	shell.CanCollide = false
+	shell.CanQuery = false
+	shell.CanTouch = false
+	shell.Massless = true
+	shell.CFrame = root.CFrame * CFrame.new(0, 0.3, 0)
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = root
+	weld.Part1 = shell
+	weld.Parent = shell
+	shell.Parent = root
+
+	local aura = Instance.new("ParticleEmitter")
+	aura.Name = "SuperAura"
+	aura.Texture = "rbxasset://textures/particles/fire_main.dds"
+	aura.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 210)),
+		ColorSequenceKeypoint.new(0.4, Color3.fromRGB(255, 215, 60)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 160, 20)),
+	})
+	aura.LightEmission = 1
+	aura.LightInfluence = 0
+	aura.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1.6),
+		NumberSequenceKeypoint.new(0.5, 2.4),
+		NumberSequenceKeypoint.new(1, 0.4),
+	})
+	aura.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.55),
+		NumberSequenceKeypoint.new(0.6, 0.7),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	aura.Shape = Enum.ParticleEmitterShape.Cylinder
+	aura.ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface
+	aura.Acceleration = Vector3.new(0, 6, 0)
+	aura.Speed = NumberRange.new(1, 3)
+	aura.Lifetime = NumberRange.new(0.5, 0.9)
+	aura.Rate = 70
+	aura.LockedToPart = true
+	aura.Parent = shell
 end
 
 return SonicLook

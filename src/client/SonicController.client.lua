@@ -561,7 +561,7 @@ end
 ---------------------------------------------------------------------------
 
 local function onBoost(_, inputState)
-	if inputState ~= Enum.UserInputState.Begin or not humanoid or loopRide then
+	if inputState ~= Enum.UserInputState.Begin or not humanoid or loopRide or player:GetAttribute("Cutscene") then
 		return Enum.ContextActionResult.Pass
 	end
 	if boostCooldown <= 0 then
@@ -593,7 +593,7 @@ UserInputService.JumpRequest:Connect(function()
 	local now = os.clock()
 	local freshPress = now - lastJumpRequest > 0.15 -- ignore auto-repeat while held
 	lastJumpRequest = now
-	if not freshPress or not airborne or airActionUsed or loopRide or not root then
+	if not freshPress or not airborne or airActionUsed or loopRide or not root or player:GetAttribute("Cutscene") then
 		return
 	end
 	if now - takeoffTime < 0.2 then
@@ -658,6 +658,10 @@ RunService.Heartbeat:Connect(function(dt)
 		animateWorld(now)
 	end
 	if not (humanoid and root and humanoid.Health > 0) then
+		return
+	end
+	if player:GetAttribute("Cutscene") then
+		lastPos = root.Position -- the Super transformation is in charge right now
 		return
 	end
 
