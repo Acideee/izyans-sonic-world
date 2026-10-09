@@ -147,10 +147,19 @@ local function onPlayerAdded(player)
 		end
 		-- Respawning ends Super form.
 		player:SetAttribute("IsSuper", false)
-		character:WaitForChild("Humanoid")
-		character:WaitForChild("Head", 5)
-		if character.Parent then
-			SonicLook.apply(character, false)
+		-- Wait until Roblox has finished building the body before dressing it,
+		-- then check again shortly after in case body parts were swapped out.
+		character:WaitForChild("Humanoid", 10)
+		local waited = 0
+		while not player:HasAppearanceLoaded() and waited < 5 do
+			waited += task.wait(0.1)
+		end
+		character:WaitForChild("UpperTorso", 5)
+		for _, delay in ipairs({ 0, 1, 3 }) do
+			task.wait(delay)
+			if character.Parent then
+				SonicLook.apply(character, player:GetAttribute("IsSuper"))
+			end
 		end
 	end)
 	-- Re-apply once the player's own avatar has finished loading over the top.

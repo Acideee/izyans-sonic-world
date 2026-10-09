@@ -39,9 +39,23 @@ local function stripAvatar(character)
 end
 
 -- Build the cartoon body on an R15 skeleton. Returns false if the rig isn't R15.
+local function costumeIntact(costume)
+	for _, part in ipairs(costume:GetChildren()) do
+		local weld = part:FindFirstChildOfClass("Weld")
+		if not (weld and weld.Part0 and weld.Part0.Parent == costume.Parent) then
+			return false
+		end
+	end
+	return true
+end
+
 local function buildCostume(character)
-	if character:FindFirstChild("SonicCostume") then
-		return true
+	local existing = character:FindFirstChild("SonicCostume")
+	if existing then
+		if costumeIntact(existing) then
+			return true
+		end
+		existing:Destroy() -- body parts were replaced after we dressed him: rebuild
 	end
 	if not character:FindFirstChild("UpperTorso") then
 		return false
@@ -102,6 +116,7 @@ local function buildCostume(character)
 	end
 
 	costume.Parent = character
+	print(("[SonicLook] Sonic body built for %s (%d pieces)"):format(character.Name, #costume:GetChildren()))
 	return true
 end
 
@@ -152,6 +167,13 @@ function SonicLook.apply(character, super)
 	end
 	stripAvatar(character)
 	if not buildCostume(character) then
+		local parts = {}
+		for _, child in ipairs(character:GetChildren()) do
+			if child:IsA("BasePart") then
+				table.insert(parts, child.Name)
+			end
+		end
+		warn("[SonicLook] No R15 body found, colouring instead. Parts: " .. table.concat(parts, ", "))
 		paintR6(character, super)
 	end
 	recolor(character, super)

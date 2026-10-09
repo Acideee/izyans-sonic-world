@@ -60,13 +60,13 @@ Config.Emeralds = {
 Config.Sounds = {
 	Ring = "rbxasset://sounds/electronicpingshort.wav",
 	Jump = "rbxasset://sounds/action_jump.mp3",
-	Boost = "rbxasset://sounds/swoosh.wav",
-	Spring = "rbxasset://sounds/swoosh.wav",
+	Boost = "rbxasset://sounds/action_jump.mp3",
+	Spring = "rbxasset://sounds/action_jump.mp3",
 	Emerald = "rbxasset://sounds/victory.wav",
 	Hurt = "rbxasset://sounds/uuhhh.mp3",
 	Badnik = "rbxasset://sounds/electronicpingshort.wav",
 	PowerUp = "rbxasset://sounds/electronicpingshort.wav", -- plays faster and higher while charging
-	SuperBam = "rbxasset://sounds/swoosh.wav",
+	SuperBam = "rbxasset://sounds/action_jump.mp3",
 	Music = "",
 	SuperMusic = "",
 }
