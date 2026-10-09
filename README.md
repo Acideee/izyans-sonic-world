@@ -5,7 +5,7 @@ smash robots, find all **7 Chaos Emeralds**, then collect 50 rings and turn into
 
 ![Sonic, his quills from the side, and Super Sonic](docs/sonic-character.png)
 
-*Preview of the in-game character, rendered from the same model file the game uses.*
+*The smooth 3D Sonic made in Blender (`models/SonicCharacter.fbx`). Import it with the steps below.*
 
 ## Play it in 2 minutes
 
@@ -67,10 +67,13 @@ The built-in Sonic is made from simple shapes. For a smooth, detailed Sonic, imp
 model in Roblox Studio. The game picks it up automatically: every player becomes that
 model, all the controls keep working, and Super Sonic gets a golden glow.
 
-**1. Get a model file.** You need a `.fbx`, `.obj` or `.glb` file of Sonic standing in a
-T-pose or A-pose (arms out). Fan-made models are on sites like Sketchfab, RenderHub and
-Gumroad. Check each one's licence and pick one allowed for personal use. Sonic belongs to
-SEGA, so keep the game private.
+**1. Get a model file.** This repo includes one: **`models/SonicCharacter.fbx`** (also
+`.glb`), a smooth Sonic made in Blender with his colours built in, standing in the A-pose
+Roblox needs. Download it from the `models` folder.
+
+You can use another Sonic instead: fan-made models are on sites like Sketchfab, RenderHub
+and Gumroad. Check each one's licence and pick one allowed for personal use. Sonic belongs
+to SEGA, so keep the game private.
 
 **2. Import it.** In Studio, open `IzyansSonicWorld.rbxlx`, go to the **Avatar** tab →
 **Import 3D**, choose the file, set **Rig Type** to **R15**, and click **Import**.
@@ -84,7 +87,10 @@ and rename it to exactly `StarterCharacter`. Press **Play**: you are now the new
 
 Tips:
 - If he's the wrong size, use the **Scale** tool on the model before step 4 (about 5–6 studs tall is right).
+- If he faces backwards after import, rotate the model 180° before step 3.
 - To go back to the built-in Sonic, delete `StarterPlayer.StarterCharacter`.
+- To change the Blender Sonic, edit `tools/blender_sonic.py` and run it with Blender
+  (`blender -b -P tools/blender_sonic.py`, or `python tools/blender_sonic.py` with `pip install bpy`).
 - Sonic models made for other games often have their own skeleton. Avatar Setup replaces it
   with a Roblox one, which can occasionally bend oddly; trying another model usually fixes it.
 
