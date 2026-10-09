@@ -160,9 +160,31 @@ local function usesImportedModel()
 	return StarterPlayer:FindFirstChild("StarterCharacter") ~= nil
 end
 
+-- Turn an imported model's body 180° around its root, so it faces the way
+-- it runs. Only done once per character.
+function SonicLook.fixFacing(character)
+	if not Config.TurnImportedModelsAround or character:GetAttribute("FacingFixed") then
+		return
+	end
+	local root = character:FindFirstChild("HumanoidRootPart")
+	if not root then
+		return
+	end
+	for _, joint in ipairs(character:GetDescendants()) do
+		if joint:IsA("Motor6D") and joint.Part0 == root then
+			joint.C0 = joint.C0 * CFrame.Angles(0, math.pi, 0)
+			character:SetAttribute("FacingFixed", true)
+			print("[SonicLook] Turned " .. character.Name .. " around to face forwards")
+			return
+		end
+	end
+	warn("[SonicLook] Couldn't find the root joint to turn " .. character.Name .. " around")
+end
+
 -- Safe to call more than once (e.g. when the avatar finishes loading late).
 function SonicLook.apply(character, super)
 	if usesImportedModel() then
+		SonicLook.fixFacing(character)
 		return
 	end
 	stripAvatar(character)

@@ -5,6 +5,11 @@ local Config = {}
 
 Config.GameName = "Izyan's Sonic World"
 
+-- Imported Sonic models come out of Roblox Studio's Avatar Setup facing
+-- backwards, so the game turns their body around. If an imported model ever
+-- runs backwards after changing it, flip this to false.
+Config.TurnImportedModelsAround = true
+
 Config.Movement = {
 	StartSpeed = 30, -- speed the moment you start running
 	MaxSpeed = 85, -- top running speed (Roblox default walk speed is 16!)

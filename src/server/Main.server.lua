@@ -78,6 +78,7 @@ local function swapCharacter(player, template)
 	else
 		new:PivotTo(old:GetPivot())
 	end
+	SonicLook.fixFacing(new)
 	local velocity = oldRoot.AssemblyLinearVelocity
 	player.Character = new
 	new.Parent = workspace

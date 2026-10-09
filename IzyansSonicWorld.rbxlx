@@ -24,6 +24,11 @@ local Config = {}
 
 Config.GameName = "Izyan's Sonic World"
 
+-- Imported Sonic models come out of Roblox Studio's Avatar Setup facing
+-- backwards, so the game turns their body around. If an imported model ever
+-- runs backwards after changing it, flip this to false.
+Config.TurnImportedModelsAround = true
+
 Config.Movement = {
 	StartSpeed = 30, -- speed the moment you start running
 	MaxSpeed = 85, -- top running speed (Roblox default walk speed is 16!)
@@ -1315,6 +1320,7 @@ local function swapCharacter(player, template)
 	else
 		new:PivotTo(old:GetPivot())
 	end
+	SonicLook.fixFacing(new)
 	local velocity = oldRoot.AssemblyLinearVelocity
 	player.Character = new
 	new.Parent = workspace
@@ -1731,9 +1737,31 @@ local function usesImportedModel()
 	return StarterPlayer:FindFirstChild("StarterCharacter") ~= nil
 end
 
+-- Turn an imported model's body 180° around its root, so it faces the way
+-- it runs. Only done once per character.
+function SonicLook.fixFacing(character)
+	if not Config.TurnImportedModelsAround or character:GetAttribute("FacingFixed") then
+		return
+	end
+	local root = character:FindFirstChild("HumanoidRootPart")
+	if not root then
+		return
+	end
+	for _, joint in ipairs(character:GetDescendants()) do
+		if joint:IsA("Motor6D") and joint.Part0 == root then
+			joint.C0 = joint.C0 * CFrame.Angles(0, math.pi, 0)
+			character:SetAttribute("FacingFixed", true)
+			print("[SonicLook] Turned " .. character.Name .. " around to face forwards")
+			return
+		end
+	end
+	warn("[SonicLook] Couldn't find the root joint to turn " .. character.Name .. " around")
+end
+
 -- Safe to call more than once (e.g. when the avatar finishes loading late).
 function SonicLook.apply(character, super)
 	if usesImportedModel() then
+		SonicLook.fixFacing(character)
 		return
 	end
 	stripAvatar(character)
