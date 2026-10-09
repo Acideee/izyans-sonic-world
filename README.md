@@ -3,9 +3,9 @@
 A fast, open-world Sonic-style Roblox game. Run around a big sunny island, grab gold rings,
 smash robots, find all **7 Chaos Emeralds**, then collect 50 rings and turn into **Super Sonic**!
 
-![Sonic, his quills from the side, and Super Sonic](docs/sonic-character.png)
+![Sonic and Super Sonic](docs/sonic-character.png)
 
-*The Sonic model (`models/SonicHedgehog.fbx`), ready for Roblox. Import it with the steps below.*
+*Sonic (`models/SonicHedgehog.fbx`) and Super Sonic (`models/SuperSonic.fbx`), ready for Roblox. Import them with the steps below.*
 
 ## Play it in 2 minutes
 
@@ -88,12 +88,18 @@ appears in the Workspace.
 **4. Make it the player.** In the Explorer, drag that new character into **StarterPlayer**
 and rename it to exactly `StarterCharacter`. Press **Play**: you are now the new Sonic.
 
+**5. Add Super Sonic (optional).** Repeat steps 2–3 with **`models/SuperSonic.fbx`**, then
+drag the result into **ServerStorage** and rename it exactly `SuperSonicCharacter`. Now when
+you go Super, Sonic changes into the golden Super Sonic model (quills up, red eyes), and
+changes back when the rings run out. Scale both models the same way so they match.
+
 Tips:
 - If he's the wrong size, use the **Scale** tool on the model before step 4 (about 5–6 studs tall is right).
 - If he faces backwards after import, rotate the model 180° before step 3.
 - To go back to the built-in Sonic, delete `StarterPlayer.StarterCharacter`.
-- To redo the conversion: unzip `Sonic Hedgehog.zip` and run
-  `python tools/convert_blendswap_sonic.py -- "Sonic the Hedgehog/Sonic the Hedghog.blend"`.
+- To redo the conversions: unzip the two zips and run
+  `python tools/convert_blendswap_sonic.py -- "Sonic the Hedgehog/Sonic the Hedghog.blend"` and
+  `python tools/convert_blendswap_sonic.py -- "Super Sonic/Super Sonic (2).blend" SuperSonic gold`.
 - To change the backup Sonic, edit `tools/blender_sonic.py` and run it with Blender
   (`blender -b -P tools/blender_sonic.py`, or `python tools/blender_sonic.py` with `pip install bpy`).
 - Sonic models made for other games often have their own skeleton. Avatar Setup replaces it
@@ -131,4 +137,6 @@ Tip: in Studio, select **Workspace → Terrain** and tick **Decoration** to get 
 - Sonic model: "Sonic Hedgehog", Blend Swap #90639, released under
   [Creative Commons Attribution 3.0](https://creativecommons.org/licenses/by/3.0/), marked as
   fan art (no commercial use). Converted for Roblox by `tools/convert_blendswap_sonic.py`.
+- Super Sonic model: "Super Sonic", Blend Swap #92091 (based on #90639), CC BY 3.0, fan art
+  (no commercial use). Converted the same way, with gold fur, red eyes and open eyelids.
 - Sonic the Hedgehog is © SEGA. This is a non-commercial fan game made for family fun.

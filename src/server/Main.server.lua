@@ -3,6 +3,8 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerStorage = game:GetService("ServerStorage")
+local StarterPlayer = game:GetService("StarterPlayer")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 local World = require(script.Parent.WorldBuilder)
@@ -56,13 +58,55 @@ local function addRings(player, amount)
 	end
 end
 
+-- Swap the player's character for a copy of `template`, keeping where they are
+-- and how fast they're going. Used to change into an imported Super Sonic model.
+local function swapCharacter(player, template)
+	local old = player.Character
+	local oldRoot = old and old:FindFirstChild("HumanoidRootPart")
+	if not (template and oldRoot) then
+		return false
+	end
+	local new = template:Clone()
+	new.Name = player.Name
+	new:SetAttribute("SuperSwap", true) -- tells CharacterAdded this isn't a respawn
+	local animate = old:FindFirstChild("Animate")
+	if animate and not new:FindFirstChild("Animate") then
+		animate:Clone().Parent = new
+	end
+	if new.PrimaryPart then
+		new:PivotTo(oldRoot.CFrame)
+	else
+		new:PivotTo(old:GetPivot())
+	end
+	local velocity = oldRoot.AssemblyLinearVelocity
+	player.Character = new
+	new.Parent = workspace
+	local root = new:FindFirstChild("HumanoidRootPart")
+	if root then
+		root.AssemblyLinearVelocity = velocity
+	end
+	old:Destroy()
+	return true
+end
+
+-- If you put an imported Super Sonic model in ServerStorage named
+-- "SuperSonicCharacter" (see README), going Super swaps to it and back.
+local function superModel()
+	return ServerStorage:FindFirstChild("SuperSonicCharacter")
+end
+
 local function setSuper(player, on)
 	if player:GetAttribute("IsSuper") == on then
 		return
 	end
 	player:SetAttribute("IsSuper", on)
+	local swapped = false
+	if superModel() then
+		local template = on and superModel() or StarterPlayer:FindFirstChild("StarterCharacter")
+		swapped = swapCharacter(player, template)
+	end
 	if player.Character then
-		SonicLook.setSuper(player.Character, on)
+		SonicLook.setSuper(player.Character, on, swapped)
 	end
 	Notify:FireClient(player, "Super", on)
 end
@@ -98,6 +142,9 @@ local function onPlayerAdded(player)
 	player:SetAttribute("IsSuper", false)
 
 	player.CharacterAdded:Connect(function(character)
+		if character:GetAttribute("SuperSwap") then
+			return -- changing into or out of the Super Sonic model, not a respawn
+		end
 		-- Respawning ends Super form.
 		player:SetAttribute("IsSuper", false)
 		character:WaitForChild("Humanoid")

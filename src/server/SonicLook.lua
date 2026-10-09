@@ -157,7 +157,9 @@ function SonicLook.apply(character, super)
 	recolor(character, super)
 end
 
-function SonicLook.setSuper(character, on)
+-- `isSuperModel` is true when the character was swapped for an imported Super
+-- Sonic model, which is already gold, so it only gets the sparkles and light.
+function SonicLook.setSuper(character, on, isSuperModel)
 	if not usesImportedModel() then
 		recolor(character, on)
 	end
@@ -165,7 +167,7 @@ function SonicLook.setSuper(character, on)
 	if glow then
 		glow:Destroy()
 	end
-	if on and usesImportedModel() then
+	if on and usesImportedModel() and not isSuperModel then
 		-- Imported models are textured, so instead of recolouring them we wrap
 		-- them in a golden glow.
 		local highlight = Instance.new("Highlight")
