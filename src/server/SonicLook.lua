@@ -1,50 +1,33 @@
--- Turns any player's avatar into a blue hedgehog (and into golden Super Sonic).
+-- Turns every player into a cartoon Sonic (and into golden Super Sonic).
+--
+-- The Sonic body is made of rounded parts listed in Shared/SonicModel.json.
+-- Each part is welded onto a limb of the normal R15 skeleton, which is then made
+-- invisible, so Roblox's running and jumping animations still move Sonic.
+-- Edit the look with tools/make_sonic_model.py.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Config = require(Shared:WaitForChild("Config"))
+local Model = require(Shared:WaitForChild("SonicModel"))
 
 local SonicLook = {}
 
-local BLUE = Color3.fromRGB(25, 75, 230)
-local PEACH = Color3.fromRGB(245, 200, 150)
-local WHITE = Color3.fromRGB(250, 250, 250)
-local RED = Color3.fromRGB(220, 30, 40)
 local GOLD = Config.Super.Color
+local SMOOTH = Enum.Material.SmoothPlastic
+local GLOSSY = { white = true, black = true, iris = true }
 
--- Works for both R15 and R6 avatars.
-local PART_COLORS = {
-	Head = BLUE,
-	UpperTorso = BLUE,
-	LowerTorso = BLUE,
-	Torso = BLUE,
-	LeftUpperArm = PEACH,
-	LeftLowerArm = PEACH,
-	RightUpperArm = PEACH,
-	RightLowerArm = PEACH,
-	["Left Arm"] = PEACH,
-	["Right Arm"] = PEACH,
-	LeftHand = WHITE,
-	RightHand = WHITE,
-	LeftUpperLeg = BLUE,
-	LeftLowerLeg = BLUE,
-	RightUpperLeg = BLUE,
-	RightLowerLeg = BLUE,
-	["Left Leg"] = BLUE,
-	["Right Leg"] = BLUE,
-	LeftFoot = RED,
-	RightFoot = RED,
-}
+local function rgb(list)
+	return Color3.fromRGB(list[1], list[2], list[3])
+end
 
--- Quills: {height on head, how far they droop, sideways angle}
-local QUILLS = {
-	{ 0.35, 0.12, 0 },
-	{ 0.05, 0.38, 0 },
-	{ -0.28, 0.65, 0 },
-	{ 0.2, 0.28, 0.4 },
-	{ 0.2, 0.28, -0.4 },
-	{ -0.1, 0.5, 0.35 },
-	{ -0.1, 0.5, -0.35 },
-}
+local function tintColor(tint, super)
+	local list = (super and Model.superColors[tint]) or Model.colors[tint]
+	return list and rgb(list) or Color3.new(1, 1, 1)
+end
+
+local function vec(list)
+	return Vector3.new(list[1], list[2], list[3])
+end
 
 local function stripAvatar(character)
 	for _, child in ipairs(character:GetChildren()) do
@@ -54,91 +37,118 @@ local function stripAvatar(character)
 	end
 end
 
-local function weldTo(part, target)
-	local weld = Instance.new("WeldConstraint")
-	weld.Part0 = target
-	weld.Part1 = part
-	weld.Parent = part
-end
-
-local function addQuills(character)
-	local head = character:FindFirstChild("Head")
-	if not head or character:FindFirstChild("SonicQuills") then
-		return
+-- Build the cartoon body on an R15 skeleton. Returns false if the rig isn't R15.
+local function buildCostume(character)
+	if character:FindFirstChild("SonicCostume") then
+		return true
 	end
-	local folder = Instance.new("Folder")
-	folder.Name = "SonicQuills"
-	local size = head.Size
-	local s = math.max(size.Y, 1)
-	local length = 1.9 * s
-
-	for _, q in ipairs(QUILLS) do
-		local droop, side = q[2], q[3]
-		-- Direction the quill points in head space (+Z is the back of the head).
-		local dir = Vector3.new(math.sin(side), -math.sin(droop), math.cos(droop) * math.cos(side)).Unit
-		local attach = Vector3.new(0, q[1] * size.Y, size.Z * 0.25)
-		local center = attach + dir * (length / 2)
-		local quill = Instance.new("WedgePart")
-		quill.Name = "Quill"
-		quill.Size = Vector3.new(0.35 * s, 0.75 * s, length)
-		-- A WedgePart tapers towards its front (-Z), so point the front along `dir`.
-		quill.CFrame = head.CFrame * CFrame.lookAt(center, center + dir)
-		quill.Color = BLUE
-		quill.Material = Enum.Material.SmoothPlastic
-		quill.CanCollide = false
-		quill.CanQuery = false
-		quill.CanTouch = false
-		quill.Massless = true
-		weldTo(quill, head)
-		quill.Parent = folder
+	if not character:FindFirstChild("UpperTorso") then
+		return false
 	end
 
-	local muzzle = Instance.new("Part")
-	muzzle.Name = "Muzzle"
-	muzzle.Shape = Enum.PartType.Ball
-	muzzle.Size = Vector3.new(0.55, 0.55, 0.55) * s
-	muzzle.CFrame = head.CFrame * CFrame.new(0, -0.22 * size.Y, -size.Z * 0.42)
-	muzzle.Color = PEACH
-	muzzle.Material = Enum.Material.SmoothPlastic
-	muzzle.CanCollide = false
-	muzzle.CanQuery = false
-	muzzle.CanTouch = false
-	muzzle.Massless = true
-	weldTo(muzzle, head)
-	muzzle.Parent = folder
+	local costume = Instance.new("Folder")
+	costume.Name = "SonicCostume"
 
-	folder.Parent = character
-end
-
-local function paint(character, super)
-	for _, item in ipairs(character:GetDescendants()) do
-		if item:IsA("BasePart") then
-			local base = PART_COLORS[item.Name]
-			if item.Name == "Quill" then
-				base = BLUE
+	for _, piece in ipairs(Model.pieces) do
+		local limb = character:FindFirstChild(piece.part)
+		if limb and limb:IsA("BasePart") then
+			local part = Instance.new("Part")
+			part.Name = piece.name
+			part.Size = vec(piece.size)
+			if piece.shape == "sphere" then
+				local mesh = Instance.new("SpecialMesh")
+				mesh.MeshType = Enum.MeshType.Sphere
+				mesh.Parent = part
+			elseif piece.shape == "cylinder" then
+				part.Shape = Enum.PartType.Cylinder
 			end
-			if base then
-				item.Color = (super and base == BLUE) and GOLD or base
-				item.Material = super and Enum.Material.Neon or Enum.Material.SmoothPlastic
-				if item:IsA("MeshPart") then
-					pcall(function()
-						item.TextureID = "" -- remove avatar skin textures so the colours show
-					end)
+			part.Material = SMOOTH
+			part.Color = tintColor(piece.tint, false)
+			part.Reflectance = GLOSSY[piece.tint] and 0.08 or 0
+			part.CanCollide = false
+			part.CanQuery = false
+			part.CanTouch = false
+			part.Massless = true
+			part.CastShadow = true
+			part:SetAttribute("Tint", piece.tint)
+
+			local rot = piece.rot
+			local offset = CFrame.new(vec(piece.pos)) * CFrame.Angles(math.rad(rot[1]), math.rad(rot[2]), math.rad(rot[3]))
+			part.CFrame = limb.CFrame * offset
+
+			-- A Weld with a fixed offset (not a WeldConstraint) so the piece stays
+			-- in the right place even if the limb is mid-animation right now.
+			local weld = Instance.new("Weld")
+			weld.Part0 = limb
+			weld.Part1 = part
+			weld.C0 = offset
+			weld.Parent = part
+
+			part.Parent = costume
+		end
+	end
+
+	-- Hide the blocky skeleton and its face; only the cartoon Sonic shows.
+	for _, item in ipairs(character:GetChildren()) do
+		if item:IsA("BasePart") and item.Name ~= "HumanoidRootPart" then
+			item.Transparency = 1
+			for _, decal in ipairs(item:GetChildren()) do
+				if decal:IsA("Decal") then
+					decal.Transparency = 1
 				end
 			end
 		end
+	end
+
+	costume.Parent = character
+	return true
+end
+
+-- Fallback for R6 avatars: just colour the blocky body like Sonic.
+local R6_COLORS = {
+	Head = "blue",
+	Torso = "blue",
+	["Left Arm"] = "peach",
+	["Right Arm"] = "peach",
+	["Left Leg"] = "blue",
+	["Right Leg"] = "blue",
+}
+
+local function paintR6(character, super)
+	for name, tint in pairs(R6_COLORS) do
+		local part = character:FindFirstChild(name)
+		if part and part:IsA("BasePart") then
+			part.Color = tintColor(tint, super)
+			part.Material = SMOOTH
+		end
+	end
+end
+
+local function recolor(character, super)
+	local costume = character:FindFirstChild("SonicCostume")
+	if costume then
+		for _, part in ipairs(costume:GetChildren()) do
+			local tint = part:GetAttribute("Tint")
+			if tint then
+				part.Color = tintColor(tint, super)
+			end
+		end
+	else
+		paintR6(character, super)
 	end
 end
 
 -- Safe to call more than once (e.g. when the avatar finishes loading late).
 function SonicLook.apply(character, super)
 	stripAvatar(character)
-	addQuills(character)
-	paint(character, super)
+	if not buildCostume(character) then
+		paintR6(character, super)
+	end
+	recolor(character, super)
 end
 
 function SonicLook.setSuper(character, on)
-	paint(character, on)
+	recolor(character, on)
 	local root = character:FindFirstChild("HumanoidRootPart")
 	if not root then
 		return

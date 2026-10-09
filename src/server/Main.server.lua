@@ -100,11 +100,11 @@ local function onPlayerAdded(player)
 	player.CharacterAdded:Connect(function(character)
 		-- Respawning ends Super form.
 		player:SetAttribute("IsSuper", false)
-		task.delay(2, function()
-			if character.Parent then
-				SonicLook.apply(character, false)
-			end
-		end)
+		character:WaitForChild("Humanoid")
+		character:WaitForChild("Head", 5)
+		if character.Parent then
+			SonicLook.apply(character, false)
+		end
 	end)
 	-- Re-apply once the player's own avatar has finished loading over the top.
 	player.CharacterAppearanceLoaded:Connect(function(character)
