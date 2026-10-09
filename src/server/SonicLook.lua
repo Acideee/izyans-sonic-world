@@ -170,15 +170,54 @@ function SonicLook.fixFacing(character)
 	if not root then
 		return
 	end
+	local half = CFrame.Angles(0, math.pi, 0)
+	local function done(how)
+		character:SetAttribute("FacingFixed", true)
+		print(("[SonicLook] Turned %s around to face forwards (%s)"):format(character.Name, how))
+	end
+
 	for _, joint in ipairs(character:GetDescendants()) do
-		if joint:IsA("Motor6D") and joint.Part0 == root then
-			joint.C0 = joint.C0 * CFrame.Angles(0, math.pi, 0)
-			character:SetAttribute("FacingFixed", true)
-			print("[SonicLook] Turned " .. character.Name .. " around to face forwards")
-			return
+		-- Classic joints (Motor6D / Weld) connect parts directly.
+		if joint:IsA("JointInstance") then
+			if joint.Part0 == root then
+				joint.C0 = joint.C0 * half
+				return done(joint.ClassName .. " " .. joint.Name)
+			elseif joint.Part1 == root then
+				joint.C1 = joint.C1 * half
+				return done(joint.ClassName .. " " .. joint.Name)
+			end
+		-- Newer rigs (e.g. AnimationConstraint) connect attachments on the parts:
+		-- turning the attachment on the root part turns the whole body.
+		elseif joint:IsA("Constraint") and (joint:IsA("AnimationConstraint") or joint:IsA("RigidConstraint")) then
+			for _, attachment in ipairs({ joint.Attachment0, joint.Attachment1 }) do
+				if attachment and attachment.Parent == root then
+					attachment.CFrame = attachment.CFrame * half
+					return done(joint.ClassName .. " " .. joint.Name)
+				end
+			end
 		end
 	end
-	warn("[SonicLook] Couldn't find the root joint to turn " .. character.Name .. " around")
+
+	-- Nothing matched: report what the skeleton is made of so it can be fixed.
+	local kinds = {}
+	for _, item in ipairs(character:GetDescendants()) do
+		if item:IsA("JointInstance") or item:IsA("Constraint") or item:IsA("Bone") then
+			kinds[item.ClassName] = (kinds[item.ClassName] or 0) + 1
+		end
+	end
+	local summary = {}
+	for kind, count in pairs(kinds) do
+		table.insert(summary, kind .. " x" .. count)
+	end
+	local rootChildren = {}
+	for _, child in ipairs(root:GetChildren()) do
+		table.insert(rootChildren, child.ClassName .. " " .. child.Name)
+	end
+	warn(("[SonicLook] Couldn't find the root joint to turn %s around. Joints: %s. Root contains: %s"):format(
+		character.Name,
+		#summary > 0 and table.concat(summary, ", ") or "none",
+		#rootChildren > 0 and table.concat(rootChildren, ", ") or "nothing"
+	))
 end
 
 -- Safe to call more than once (e.g. when the avatar finishes loading late).
