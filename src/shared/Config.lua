@@ -5,10 +5,9 @@ local Config = {}
 
 Config.GameName = "Izyan's Sonic World"
 
--- Imported Sonic models come out of Roblox Studio's Avatar Setup facing
--- backwards, so the game turns their body around. If an imported model ever
--- runs backwards after changing it, flip this to false.
-Config.TurnImportedModelsAround = true
+-- Set to true only if an imported model runs backwards in game: the game will
+-- then turn its body around. The models in models/ already face the right way.
+Config.TurnImportedModelsAround = false
 
 Config.Movement = {
 	StartSpeed = 30, -- speed the moment you start running
