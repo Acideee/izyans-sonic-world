@@ -5,7 +5,7 @@ smash robots, find all **7 Chaos Emeralds**, then collect 50 rings and turn into
 
 ![Sonic, his quills from the side, and Super Sonic](docs/sonic-character.png)
 
-*The smooth 3D Sonic made in Blender (`models/SonicCharacter.fbx`). Import it with the steps below.*
+*The Sonic model (`models/SonicHedgehog.fbx`), ready for Roblox. Import it with the steps below.*
 
 ## Play it in 2 minutes
 
@@ -67,9 +67,12 @@ The built-in Sonic is made from simple shapes. For a smooth, detailed Sonic, imp
 model in Roblox Studio. The game picks it up automatically: every player becomes that
 model, all the controls keep working, and Super Sonic gets a golden glow.
 
-**1. Get a model file.** This repo includes one: **`models/SonicCharacter.fbx`** (also
-`.glb`), a smooth Sonic made in Blender with his colours built in, standing in the A-pose
-Roblox needs. Download it from the `models` folder.
+**1. Get a model file.** This repo includes one ready to go: **`models/SonicHedgehog.fbx`**
+(also `.glb`). It's the fan-made "Sonic Hedgehog" model from `Sonic Hedgehog.zip`,
+converted for Roblox: T-pose, one mesh under 20,000 triangles, all colours and eye textures
+in one texture. Download it from the `models` folder.
+
+(`models/SonicCharacter.fbx` is a simpler Sonic made from code, kept as a backup.)
 
 You can use another Sonic instead: fan-made models are on sites like Sketchfab, RenderHub
 and Gumroad. Check each one's licence and pick one allowed for personal use. Sonic belongs
@@ -89,7 +92,9 @@ Tips:
 - If he's the wrong size, use the **Scale** tool on the model before step 4 (about 5–6 studs tall is right).
 - If he faces backwards after import, rotate the model 180° before step 3.
 - To go back to the built-in Sonic, delete `StarterPlayer.StarterCharacter`.
-- To change the Blender Sonic, edit `tools/blender_sonic.py` and run it with Blender
+- To redo the conversion: unzip `Sonic Hedgehog.zip` and run
+  `python tools/convert_blendswap_sonic.py -- "Sonic the Hedgehog/Sonic the Hedghog.blend"`.
+- To change the backup Sonic, edit `tools/blender_sonic.py` and run it with Blender
   (`blender -b -P tools/blender_sonic.py`, or `python tools/blender_sonic.py` with `pip install bpy`).
 - Sonic models made for other games often have their own skeleton. Avatar Setup replaces it
   with a Roblox one, which can occasionally bend oddly; trying another model usually fixes it.
@@ -120,3 +125,10 @@ To rebuild the place file after editing code: `rojo build default.project.json -
 To live-sync into an open Studio session: `rojo serve` plus the Rojo Studio plugin.
 
 Tip: in Studio, select **Workspace → Terrain** and tick **Decoration** to get animated grass blades.
+
+## Credits
+
+- Sonic model: "Sonic Hedgehog", Blend Swap #90639, released under
+  [Creative Commons Attribution 3.0](https://creativecommons.org/licenses/by/3.0/), marked as
+  fan art (no commercial use). Converted for Roblox by `tools/convert_blendswap_sonic.py`.
+- Sonic the Hedgehog is © SEGA. This is a non-commercial fan game made for family fun.
