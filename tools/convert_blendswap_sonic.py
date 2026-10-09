@@ -189,6 +189,10 @@ def main(blend_path, name="SonicHedgehog", fur=None):
     body = bpy.context.active_object
     body.name = body.data.name = name
     bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    # Turn him around: Roblox imports these files facing the other way, which
+    # makes Avatar Setup build a skeleton that runs backwards.
+    body.rotation_euler = (0, 0, math.pi)
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
 
     # 0) Reduce to Roblox's triangle limit first (original UVs are carried along).
     tris = sum(len(p.vertices) - 2 for p in body.data.polygons)
