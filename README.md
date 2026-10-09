@@ -53,6 +53,8 @@ Emeralds circle him faster and faster, then **BAM!** a flash and a golden shockw
 Super Sonic, wrapped in a golden aura. As Super Sonic he's much faster, flies, and can't be
 hurt. Super form uses 1 ring per second.
 
+![Super Sonic powered up with his golden aura](docs/super-sonic.png)
+
 ## The Sonic character
 
 Every player becomes a cartoon Sonic with a big round head, swept-back quills, big eyes,
