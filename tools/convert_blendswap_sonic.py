@@ -6,9 +6,16 @@ It puts Sonic in his T-pose, merges all body parts into one mesh under Roblox's
 20,000-triangle limit, bakes every material (colours and eye textures) into a
 single texture, and exports FBX + GLB for Roblox Studio's Avatar Setup.
 
+With "parts" as the last argument it instead cuts Sonic into the 15 Roblox
+R15 body pieces (Head, UpperTorso, LeftUpperArm, ...), lowers his arms to his
+sides and exports them as separate meshes. The game attaches those pieces to
+Roblox's standard skeleton, so no Avatar Setup is needed.
+
 Usage (with `pip install bpy`, or `blender -b -P ... -- ...`):
     python tools/convert_blendswap_sonic.py -- "path/to/Sonic the Hedghog.blend"
     python tools/convert_blendswap_sonic.py -- "path/to/Super Sonic (2).blend" SuperSonic gold
+    python tools/convert_blendswap_sonic.py -- "path/to/Sonic the Hedghog.blend" SonicParts none parts
+    python tools/convert_blendswap_sonic.py -- "path/to/Super Sonic (2).blend" SuperSonicParts gold parts
 Outputs: models/<name>.fbx, models/<name>.glb, models/<name>_color.png (name defaults to SonicHedgehog)
 """
 
@@ -18,7 +25,8 @@ import os
 import sys
 
 import bpy
-from mathutils import Matrix
+import bmesh  # noqa: E402  (must come after bpy)
+from mathutils import Matrix, Vector, kdtree
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.normpath(os.path.join(HERE, "..", "models"))
@@ -26,6 +34,71 @@ TARGET_TRIS = 19000
 TEXTURE_SIZE = 2048
 ROOT_RIG = "Reference.001"
 SKIP = {"Teeth"}  # hidden inside the head
+# Roblox R15 body pieces, and which bone of the model's rig each one follows.
+R15_PARTS = ["Head", "UpperTorso", "LowerTorso",
+             "LeftUpperArm", "LeftLowerArm", "LeftHand", "RightUpperArm", "RightLowerArm", "RightHand",
+             "LeftUpperLeg", "LeftLowerLeg", "LeftFoot", "RightUpperLeg", "RightLowerLeg", "RightFoot"]
+BONE_TO_PART = {
+    "Head": "Head", "Neck": "Head", "Spine1": "UpperTorso", "Spine": "LowerTorso",
+    "Hips": "LowerTorso", "master bone": "LowerTorso",
+    # The rig's "_L" bones are on Sonic's own left.
+    "UpperArm_L": "LeftUpperArm", "ForeArm_L": "LeftLowerArm", "Hand_L": "LeftHand",
+    "UpperArm_R": "RightUpperArm", "ForeArm_R": "RightLowerArm", "Hand_R": "RightHand",
+    "Thigh_L": "LeftUpperLeg", "Calf_L": "LeftLowerLeg", "Foot_L": "LeftFoot",
+    "Thigh_R": "RightUpperLeg", "Calf_R": "RightLowerLeg", "Foot_R": "RightFoot",
+}
+
+
+def part_for_bone(bone_name):
+    """Which R15 piece a bone of the model's rig belongs to (walks up to a known bone)."""
+    ref = bpy.data.objects[ROOT_RIG].data.bones
+    bone = ref.get(bone_name)
+    if bone is None:
+        rig = bpy.data.objects.get("rig")
+        if rig and bone_name in rig.data.bones:
+            return "Head"  # the face/mouth rig
+        return None
+    while bone:
+        if bone.name in BONE_TO_PART:
+            return BONE_TO_PART[bone.name]
+        bone = bone.parent
+    return None
+
+
+def face_parts(obj, mesh):
+    """R15 piece index for every face of `mesh` (an evaluated copy of `obj`)."""
+    fallback = None
+    if obj.parent_type == "BONE" and obj.parent_bone:
+        fallback = part_for_bone(obj.parent_bone)
+    group_part = {}
+    for g in obj.vertex_groups:
+        part = part_for_bone(g.name)
+        if part:
+            group_part[g.index] = R15_PARTS.index(part)
+    vert_weights = []
+    for v in mesh.vertices:
+        w = {}
+        for g in v.groups:
+            if g.group in group_part and g.weight > 0:
+                k = group_part[g.group]
+                w[k] = w.get(k, 0) + g.weight
+        vert_weights.append(w)
+    labels = []
+    for poly in mesh.polygons:
+        total = {}
+        for vi in poly.vertices:
+            for k, wt in vert_weights[vi].items():
+                total[k] = total.get(k, 0) + wt
+        if total:
+            labels.append(max(total, key=total.get))
+        else:
+            labels.append(R15_PARTS.index(fallback) if fallback else -1)
+    # Faces with no information take the object's most common piece.
+    known = [l for l in labels if l >= 0]
+    common = max(set(known), key=known.count) if known else R15_PARTS.index("UpperTorso")
+    return [l if l >= 0 else common for l in labels]
+
+
 # Lip control moves (in studs) that open a confident smirk on the Super Sonic file.
 SMIRK = {
     "MCH_Mouth_Lip_Low.L": (0.0, 0.0, -0.07),
@@ -55,7 +128,8 @@ def descendants_of(root):
     return [o for o in bpy.data.objects if inside(o)]
 
 
-def main(blend_path, name="SonicHedgehog", fur=None):
+def main(blend_path, name="SonicHedgehog", fur=None, mode=None):
+    parts_mode = mode == "parts"
     os.makedirs(OUT, exist_ok=True)
     # Never run scripts embedded in a downloaded .blend file.
     bpy.context.preferences.filepaths.use_scripts_auto_execute = False
@@ -170,7 +244,11 @@ def main(blend_path, name="SonicHedgehog", fur=None):
     depsgraph = bpy.context.evaluated_depsgraph_get()
     copies = []
     for o in sources:
-        mesh = bpy.data.meshes.new_from_object(o.evaluated_get(depsgraph), depsgraph=depsgraph)
+        mesh = bpy.data.meshes.new_from_object(o.evaluated_get(depsgraph), preserve_all_data_layers=True, depsgraph=depsgraph)
+        if parts_mode:
+            labels = face_parts(o, mesh)
+            attr = mesh.attributes.new("r15", "INT", "FACE")
+            attr.data.foreach_set("value", labels)
         copy = bpy.data.objects.new(o.name + "_copy", mesh)
         copy.matrix_world = o.matrix_world.copy()
         # Give every part's texture map the same name so they survive the merge
@@ -193,6 +271,16 @@ def main(blend_path, name="SonicHedgehog", fur=None):
     # makes Avatar Setup build a skeleton that runs backwards.
     body.rotation_euler = (0, 0, math.pi)
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+
+    # Remember which piece each face belongs to, by position, so the labels
+    # survive the triangle reduction below.
+    if parts_mode:
+        values = [0] * len(body.data.polygons)
+        body.data.attributes["r15"].data.foreach_get("value", values)
+        face_tree = kdtree.KDTree(len(body.data.polygons))
+        for poly in body.data.polygons:
+            face_tree.insert(poly.center, poly.index)
+        face_tree.balance()
 
     # 0) Reduce to Roblox's triangle limit first (original UVs are carried along).
     tris = sum(len(p.vertices) - 2 for p in body.data.polygons)
@@ -267,6 +355,11 @@ def main(blend_path, name="SonicHedgehog", fur=None):
 
     bpy.ops.object.shade_smooth()
 
+    if parts_mode:
+        labels = [values[face_tree.find(poly.center)[1]] for poly in mesh.polygons]
+        export_parts(body, labels, name, tris)
+        return
+
     # Export only the finished mesh, standing on the ground at the origin.
     bpy.ops.object.select_all(action="DESELECT")
     body.select_set(True)
@@ -279,4 +372,74 @@ def main(blend_path, name="SonicHedgehog", fur=None):
     print(f"parts {len(sources)}; {tris} -> {after} triangles; size {d.x:.2f} x {d.y:.2f} x {d.z:.2f}")
 
 
-main(*sys.argv[sys.argv.index("--") + 1:])
+def export_parts(body, labels, name, tris_before):
+    """Split the finished mesh into R15 pieces, lower the arms, and export."""
+    pieces = {}
+    for index, part in enumerate(R15_PARTS):
+        if index not in labels:
+            continue
+        obj = body.copy()
+        obj.data = body.data.copy()
+        obj.name = obj.data.name = part
+        bpy.context.scene.collection.objects.link(obj)
+        bm = bmesh.new()
+        bm.from_mesh(obj.data)
+        bm.faces.ensure_lookup_table()
+        bmesh.ops.delete(bm, geom=[f for f in bm.faces if labels[f.index] != index], context="FACES")
+        bm.to_mesh(obj.data)
+        bm.free()
+        pieces[part] = obj
+    bpy.data.objects.remove(body, do_unlink=True)
+
+    # A few fingertip faces get labelled as torso/head; out at arm height and
+    # far to the side they can only be arm bits left behind, so drop them.
+    # (The chest and hips are never more than ~1 unit wide either side; the
+    # head is left alone because its quills do reach out to the sides.)
+    for part, limit in (("Head", 1.85), ("UpperTorso", 1.0), ("LowerTorso", 1.0)):
+        obj = pieces.get(part)
+        if not obj:
+            continue
+        bm = bmesh.new()
+        bm.from_mesh(obj.data)
+        stray = [f for f in bm.faces
+                 if abs(f.calc_center_median().x) > limit and 3.4 < f.calc_center_median().z < 4.4]
+        bmesh.ops.delete(bm, geom=stray, context="FACES")
+        bm.to_mesh(obj.data)
+        bm.free()
+
+    # Roblox's standard skeleton stands with its arms down, so swing each arm
+    # (upper arm, lower arm, hand) down around the shoulder, a little out.
+    for side in ("Left", "Right"):
+        chain = [pieces.get(side + n) for n in ("UpperArm", "LowerArm", "Hand")]
+        upper = chain[0]
+        if not upper:
+            continue
+        verts = [upper.matrix_world @ v.co for v in upper.data.vertices]
+        outward = 1 if sum(v.x for v in verts) / len(verts) > 0 else -1
+        shoulder = min(verts, key=lambda v: abs(v.x))
+        pivot = Vector((shoulder.x, sum(v.y for v in verts) / len(verts), sum(v.z for v in verts) / len(verts)))
+        turn = (Matrix.Translation(pivot) @ Matrix.Rotation(math.radians(80 * outward), 4, "Y")
+                @ Matrix.Translation(-pivot))
+        for obj in chain:
+            if obj:
+                obj.data.transform(turn)
+                obj.data.update()
+
+    bpy.ops.object.select_all(action="DESELECT")
+    for obj in pieces.values():
+        obj.select_set(True)
+        bpy.context.view_layer.objects.active = obj
+        bpy.ops.object.origin_set(type="ORIGIN_GEOMETRY", center="BOUNDS")
+    for obj in pieces.values():
+        obj.select_set(True)
+    bpy.ops.export_scene.gltf(filepath=os.path.join(OUT, name + ".glb"), export_format="GLB", use_selection=True)
+    bpy.ops.export_scene.fbx(filepath=os.path.join(OUT, name + ".fbx"), use_selection=True,
+                             path_mode="COPY", embed_textures=True, apply_unit_scale=True)
+    summary = ", ".join(f"{p} {sum(len(f.vertices) - 2 for f in o.data.polygons)}" for p, o in pieces.items())
+    print(f"pieces {len(pieces)} from {tris_before} triangles: {summary}")
+
+
+args = [a for a in sys.argv[sys.argv.index("--") + 1:]]
+if len(args) >= 3 and args[2] == "none":
+    args[2] = None
+main(*args)

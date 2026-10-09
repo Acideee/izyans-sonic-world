@@ -66,49 +66,29 @@ still work. To change the look, edit `tools/make_sonic_model.py` and run
 `python3 tools/make_sonic_model.py` to regenerate the JSON. The game ignores players' own
 avatar items so everyone gets the same Sonic.
 
-## Use a real 3D Sonic model (looks like Sonic Speed Simulator)
+## Use your Sonic model (recommended)
 
-The built-in Sonic is made from simple shapes. For a smooth, detailed Sonic, import a 3D
-model in Roblox Studio. The game picks it up automatically: every player becomes that
-model, all the controls keep working, and Super Sonic gets a golden glow.
+The repo has your Sonic model already cut into the 15 Roblox body pieces:
+**`models/SonicParts.fbx`** and **`models/SuperSonicParts.fbx`**. The game welds each piece
+onto the normal Roblox skeleton, so Roblox's own animations make him run and jump.
+No Avatar Setup is needed.
 
-**1. Get a model file.** This repo includes one ready to go: **`models/SonicHedgehog.fbx`**
-(also `.glb`). It's the fan-made "Sonic Hedgehog" model from `Sonic Hedgehog.zip`,
-converted for Roblox: T-pose, one mesh under 20,000 triangles, all colours and eye textures
-in one texture. Download it from the `models` folder.
+1. Open `IzyansSonicWorld.rbxlx` in Studio. If **StarterPlayer** has a `StarterCharacter`, delete it.
+2. **Home → Import** → `models/SonicParts.fbx` → **Import**. Don't change any settings.
+3. In **Explorer**, drag the imported model into **ServerStorage** and rename it exactly `SonicParts`.
+4. Do the same with `models/SuperSonicParts.fbx`, renamed `SuperSonicParts`.
+5. Press **Play**. The Output panel says `[SonicLook] ... dressed as SonicParts`.
 
-(`models/SonicCharacter.fbx` is a simpler Sonic made from code, kept as a backup.)
+The game works out which way he faces and how big he is by itself. When you go Super, he
+switches to the golden pieces.
 
-You can use another Sonic instead: fan-made models are on sites like Sketchfab, RenderHub
-and Gumroad. Check each one's licence and pick one allowed for personal use. Sonic belongs
-to SEGA, so keep the game private.
+### Other option: a fully rigged model with Avatar Setup
 
-**2. Import it.** In Studio, open `IzyansSonicWorld.rbxlx`, go to the **Avatar** tab →
-**Import 3D**, choose the file, set **Rig Type** to **R15**, and click **Import**.
-
-**3. Make it playable.** Select the imported model, then **Avatar** tab → **Avatar Setup**
-→ **Set Up Avatar**. Studio adds a Roblox skeleton automatically, and a ready character
-appears in the Workspace.
-
-**4. Make it the player.** In the Explorer, drag that new character into **StarterPlayer**
-and rename it to exactly `StarterCharacter`. Press **Play**: you are now the new Sonic.
-
-**5. Add Super Sonic (optional).** Repeat steps 2–3 with **`models/SuperSonic.fbx`**, then
-drag the result into **ServerStorage** and rename it exactly `SuperSonicCharacter`. Now when
-you go Super, Sonic changes into the golden Super Sonic model (quills up, red eyes), and
-changes back when the rings run out. Scale both models the same way so they match.
-
-Tips:
-- If he's the wrong size, use the **Scale** tool on the model before step 4 (about 5–6 studs tall is right).
-- If he faces backwards after import, rotate the model 180° before step 3.
-- To go back to the built-in Sonic, delete `StarterPlayer.StarterCharacter`.
-- To redo the conversions: unzip the two zips and run
-  `python tools/convert_blendswap_sonic.py -- "Sonic the Hedgehog/Sonic the Hedghog.blend"` and
-  `python tools/convert_blendswap_sonic.py -- "Super Sonic/Super Sonic (2).blend" SuperSonic gold`.
-- To change the backup Sonic, edit `tools/blender_sonic.py` and run it with Blender
-  (`blender -b -P tools/blender_sonic.py`, or `python tools/blender_sonic.py` with `pip install bpy`).
-- Sonic models made for other games often have their own skeleton. Avatar Setup replaces it
-  with a Roblox one, which can occasionally bend oddly; trying another model usually fixes it.
+Studio's Avatar Setup can also turn a single-mesh model into a character, but for this
+Sonic it built the skeleton facing backwards, so the pieces above are the reliable way.
+`models/SonicHedgehog.fbx` and `models/SuperSonic.fbx` are the single-mesh versions. If you
+try it: import, Avatar Setup, rename the result `StarterCharacter` inside **StarterPlayer**;
+if he runs backwards, set `Config.TurnImportedModelsAround = true` in `src/shared/Config.lua`.
 
 ## Tweaking the game
 

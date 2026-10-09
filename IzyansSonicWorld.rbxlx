@@ -1576,12 +1576,19 @@ end)
           <string name="Name">SonicLook</string>
           <string name="Source"><![CDATA[-- Turns every player into a cartoon Sonic (and into golden Super Sonic).
 --
+-- Best option: put the imported Sonic pieces (models/SonicParts.fbx) in
+-- ServerStorage as "SonicParts" (and models/SuperSonicParts.fbx as
+-- "SuperSonicParts"). Each piece is welded onto the matching limb of the normal
+-- Roblox R15 skeleton, so Roblox's own running and jumping animations move him.
+--
+-- Without those, the built-in Sonic below is used:
 -- The Sonic body is made of rounded parts listed in Shared/SonicModel.json.
 -- Each part is welded onto a limb of the normal R15 skeleton, which is then made
 -- invisible, so Roblox's running and jumping animations still move Sonic.
 -- Edit the look with tools/make_sonic_model.py.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerStorage = game:GetService("ServerStorage")
 local StarterPlayer = game:GetService("StarterPlayer")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
@@ -1696,6 +1703,188 @@ local function buildCostume(character)
 	return true
 end
 
+---------------------------------------------------------------------------
+-- Imported Sonic pieces (SonicParts / SuperSonicParts in ServerStorage)
+---------------------------------------------------------------------------
+
+local R15_NAMES = {
+	"Head", "UpperTorso", "LowerTorso",
+	"LeftUpperArm", "LeftLowerArm", "LeftHand", "RightUpperArm", "RightLowerArm", "RightHand",
+	"LeftUpperLeg", "LeftLowerLeg", "LeftFoot", "RightUpperLeg", "RightLowerLeg", "RightFoot",
+}
+
+local function partsTemplate(super)
+	if super then
+		local superParts = ServerStorage:FindFirstChild("SuperSonicParts")
+		if superParts then
+			return superParts, true
+		end
+	end
+	return ServerStorage:FindFirstChild("SonicParts"), false
+end
+
+-- Which R15 limb a piece is for, from its name ("LeftHand", "LeftHand_1", ...).
+local function limbNameOf(piece)
+	if table.find(R15_NAMES, piece.Name) then
+		return piece.Name
+	end
+	local best
+	for _, name in ipairs(R15_NAMES) do
+		if string.find(piece.Name, name, 1, true) and (not best or #name > #best) then
+			best = name
+		end
+	end
+	return best
+end
+
+-- Where each limb sits when the character stands still (ignoring animation),
+-- worked out from the joints, starting at the root.
+local function restPose(character)
+	local root = character:FindFirstChild("HumanoidRootPart")
+	local rest = { [root] = root.CFrame }
+	local joints = {}
+	for _, j in ipairs(character:GetDescendants()) do
+		if j:IsA("Motor6D") and j.Part0 and j.Part1 then
+			table.insert(joints, j)
+		end
+	end
+	local progress = true
+	while progress do
+		progress = false
+		for _, j in ipairs(joints) do
+			if rest[j.Part0] and not rest[j.Part1] then
+				rest[j.Part1] = rest[j.Part0] * j.C0 * j.C1:Inverse()
+				progress = true
+			end
+		end
+	end
+	return rest
+end
+
+local function flat(v)
+	return Vector3.new(v.X, 0, v.Z)
+end
+
+local function buildPartsCostume(character, template, super)
+	local root = character:FindFirstChild("HumanoidRootPart")
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if not (root and humanoid and character:FindFirstChild("UpperTorso")) then
+		return false
+	end
+	local existing = character:FindFirstChild("SonicCostume")
+	if existing then
+		if existing:GetAttribute("Template") == template.Name and costumeIntact(existing) then
+			return true
+		end
+		existing:Destroy()
+	end
+
+	-- The pieces, their limb, and the size of the whole model.
+	local pieces = {}
+	local minV = Vector3.new(math.huge, math.huge, math.huge)
+	local maxV = -minV
+	local centers = {}
+	for _, piece in ipairs(template:GetDescendants()) do
+		if piece:IsA("BasePart") then
+			local limbName = limbNameOf(piece)
+			if limbName then
+				table.insert(pieces, { part = piece, limb = limbName })
+				centers[limbName] = piece.Position
+				local half = piece.Size / 2
+				for _, sx in ipairs({ -1, 1 }) do
+					for _, sy in ipairs({ -1, 1 }) do
+						for _, sz in ipairs({ -1, 1 }) do
+							local corner = piece.CFrame:PointToWorldSpace(half * Vector3.new(sx, sy, sz))
+							minV = minV:Min(corner)
+							maxV = maxV:Max(corner)
+						end
+					end
+				end
+			end
+		end
+	end
+	if #pieces == 0 then
+		warn("[SonicLook] " .. template.Name .. " has no pieces named like Head, UpperTorso, LeftHand...")
+		return false
+	end
+
+	-- Which way the model faces: his shoes stick out in front of his legs.
+	local forward
+	local function avg(a, b)
+		return (a and b) and (a + b) / 2 or a or b
+	end
+	local feet = avg(centers.LeftFoot, centers.RightFoot)
+	local legs = avg(centers.LeftLowerLeg, centers.RightLowerLeg)
+	if feet and legs and flat(feet - legs).Magnitude > 0.01 then
+		forward = flat(feet - legs).Unit
+	elseif centers.Head and centers.UpperTorso and flat(centers.Head - centers.UpperTorso).Magnitude > 0.01 then
+		forward = -flat(centers.Head - centers.UpperTorso).Unit -- quills stick out behind
+	else
+		forward = Vector3.new(0, 0, -1)
+	end
+	local modelOrigin = Vector3.new((minV.X + maxV.X) / 2, minV.Y, (minV.Z + maxV.Z) / 2)
+	local modelFrame = CFrame.lookAt(modelOrigin, modelOrigin + forward)
+
+	-- Line him up with the character: feet on the floor, same height, same facing.
+	local rest = restPose(character)
+	local head = character:FindFirstChild("Head")
+	local floorY = root.Position.Y - root.Size.Y / 2 - humanoid.HipHeight
+	local headTop = rest[head] and (rest[head].Position.Y + head.Size.Y / 2) or (floorY + 5.2)
+	local scale = (headTop - floorY) / math.max(maxV.Y - minV.Y, 0.01)
+	local charFrame = CFrame.new(root.Position.X, floorY, root.Position.Z) * root.CFrame.Rotation
+
+	local costume = Instance.new("Folder")
+	costume.Name = "SonicCostume"
+	costume:SetAttribute("Template", template.Name)
+	for _, info in ipairs(pieces) do
+		local local_ = modelFrame:ToObjectSpace(info.part.CFrame)
+		local target = charFrame * CFrame.new(local_.Position * scale) * local_.Rotation
+
+		-- Use the limb on the side the piece is actually on (in case the
+		-- import mirrored him).
+		local limbName = info.limb
+		local side = local_.Position.X
+		if string.sub(limbName, 1, 4) == "Left" and side > 0.05 then
+			limbName = "Right" .. string.sub(limbName, 5)
+		elseif string.sub(limbName, 1, 5) == "Right" and side < -0.05 then
+			limbName = "Left" .. string.sub(limbName, 6)
+		end
+		local limb = character:FindFirstChild(limbName)
+		if limb and limb:IsA("BasePart") and rest[limb] then
+			local offset = rest[limb]:ToObjectSpace(target)
+			local part = info.part:Clone()
+			part.Size = info.part.Size * scale
+			part.Anchored = false
+			part.CanCollide = false
+			part.CanQuery = false
+			part.CanTouch = false
+			part.Massless = true
+			part.CFrame = limb.CFrame * offset
+			local weld = Instance.new("Weld")
+			weld.Part0 = limb
+			weld.Part1 = part
+			weld.C0 = offset
+			weld.Parent = part
+			part.Parent = costume
+		end
+	end
+
+	for _, item in ipairs(character:GetChildren()) do
+		if item:IsA("BasePart") and item.Name ~= "HumanoidRootPart" then
+			item.Transparency = 1
+			for _, decal in ipairs(item:GetChildren()) do
+				if decal:IsA("Decal") then
+					decal.Transparency = 1
+				end
+			end
+		end
+	end
+	costume.Parent = character
+	print(("[SonicLook] %s dressed as %s (%d pieces, scale %.2f)"):format(
+		character.Name, template.Name, #costume:GetChildren(), scale))
+	return true
+end
+
 -- Fallback for R6 avatars: just colour the blocky body like Sonic.
 local R6_COLORS = {
 	Head = "blue",
@@ -1798,6 +1987,16 @@ end
 
 -- Safe to call more than once (e.g. when the avatar finishes loading late).
 function SonicLook.apply(character, super)
+	local template = partsTemplate(super)
+	if template then
+		stripAvatar(character)
+		if usesImportedModel() then
+			warn("[SonicLook] Delete StarterPlayer.StarterCharacter: SonicParts in ServerStorage is used instead")
+		end
+		if buildPartsCostume(character, template, super) then
+			return
+		end
+	end
 	if usesImportedModel() then
 		SonicLook.fixFacing(character)
 		return
@@ -1819,7 +2018,12 @@ end
 -- `isSuperModel` is true when the character was swapped for an imported Super
 -- Sonic model, which is already gold, so it only gets the sparkles and light.
 function SonicLook.setSuper(character, on, isSuperModel)
-	if not usesImportedModel() then
+	local template, isSuperParts = partsTemplate(on)
+	local textured = usesImportedModel()
+	if template and buildPartsCostume(character, template, on) then
+		textured = true
+		isSuperModel = isSuperModel or isSuperParts
+	elseif not usesImportedModel() then
 		recolor(character, on)
 	end
 	local glow = character:FindFirstChild("SuperGlow")
@@ -1832,7 +2036,7 @@ function SonicLook.setSuper(character, on, isSuperModel)
 		local highlight = Instance.new("Highlight")
 		highlight.Name = "SuperGlow"
 		highlight.FillColor = GOLD
-		highlight.FillTransparency = (usesImportedModel() and not isSuperModel) and 0.35 or 1
+		highlight.FillTransparency = (textured and not isSuperModel) and 0.35 or 1
 		highlight.OutlineColor = Color3.fromRGB(255, 225, 90)
 		highlight.OutlineTransparency = 0
 		highlight.DepthMode = Enum.HighlightDepthMode.Occluded
