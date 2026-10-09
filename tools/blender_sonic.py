@@ -84,7 +84,7 @@ def limb(a, b, radius_a, radius_b, color):
     ellipsoid(b, (radius_b * 2,) * 3, color)
 
 
-def spike(points, base_radius, color, tip=0.03):
+def spike(points, base_radius, color, tip=0.03, taper=True):
     """Smooth curved spike: a bezier tube whose thickness tapers to a point."""
     curve = bpy.data.curves.new("spike", "CURVE")
     curve.dimensions = "3D"
@@ -100,7 +100,7 @@ def spike(points, base_radius, color, tip=0.03):
         bp.co = p
         bp.handle_left_type = bp.handle_right_type = "AUTO"
         t = i / (n - 1)
-        bp.radius = max(tip, (1 - t) ** 1.15)
+        bp.radius = max(tip, (1 - t) ** 1.15) if taper else 1.0
     obj = bpy.data.objects.new("spike", curve)
     bpy.context.collection.objects.link(obj)
     bpy.context.view_layer.objects.active = obj
@@ -108,8 +108,10 @@ def spike(points, base_radius, color, tip=0.03):
     bpy.ops.object.convert(target="MESH")
     obj = bpy.context.active_object
     bpy.ops.object.shade_smooth()
-    # Round off the flat base cap so it fuses nicely into the head.
+    # Round off the flat end caps so they fuse nicely.
     ellipsoid(points[0], (base_radius * 2,) * 3, color)
+    if not taper:
+        ellipsoid(points[-1], (base_radius * 2,) * 3, color)
     return tag(obj, color)
 
 
@@ -156,14 +158,35 @@ def build_sonic():
     # ----------------------------------------------------------- head
     head = Vector((0, 0, 4.0))
     ellipsoid(head, (1.62, 1.55, 1.5), "blue")
-    ellipsoid(head + Vector((0, -0.55, -0.28)), (0.95, 0.66, 0.62), "peach")  # muzzle
-    ellipsoid(head + Vector((0, -0.92, -0.08)), (0.22, 0.18, 0.17), "black")  # nose
-    ellipsoid(head + Vector((0.12, -0.83, -0.42)), (0.36, 0.08, 0.06), "mouth", rot=(0, 12, 8))  # smirk
+    # Face: Sonic's look comes from eyes that join in the middle, a blue brow
+    # slanting down over them, pupils looking ahead together, and a smirk.
+    ellipsoid(head + Vector((0, -0.56, -0.27)), (0.9, 0.62, 0.58), "peach")  # muzzle
+    ellipsoid(head + Vector((0, -0.92, -0.06)), (0.24, 0.2, 0.18), "black")  # nose
+    spike([head + Vector(p) for p in [(-0.12, -0.855, -0.36), (0.08, -0.85, -0.37), (0.22, -0.8, -0.32), (0.3, -0.73, -0.24)]],
+          0.024, "mouth", taper=False)  # smirk
     for s in (1, -1):
-        ellipsoid(head + Vector((0.17 * s, -0.58, 0.2)), (0.5, 0.4, 0.78), "white", rot=(0, -8 * s, -14 * s))
-        ellipsoid(head + Vector((0.14 * s, -0.76, 0.17)), (0.27, 0.1, 0.46), "iris", rot=(0, -8 * s, -14 * s))
-        ellipsoid(head + Vector((0.13 * s, -0.805, 0.18)), (0.13, 0.06, 0.25), "black", rot=(0, -8 * s, -14 * s))
-        ellipsoid(head + Vector((0.1 * s, -0.83, 0.27)), (0.06, 0.03, 0.08), "white")
+        eye = ellipsoid(head + Vector((0.13 * s, -0.58, 0.2)), (0.52, 0.42, 0.82), "white", rot=(0, -10 * s, -12 * s))
+        # Slice the top of the eye along a line sloping down towards the nose,
+        # so the blue head forms Sonic's determined brow.
+        inner = head + Vector((0.0, 0, 0.36))
+        outer = head + Vector((0.42 * s, 0, 0.53))
+        along = (outer - inner).normalized()
+        up = Vector((-along.z * s, 0, abs(along.x))).normalized()
+        if up.z < 0:
+            up = -up
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(inner + outer) / 2 + up * 0.5)
+        cutter = bpy.context.active_object
+        cutter.scale = (2.0, 2.0, 1.0)
+        cutter.rotation_euler = (0, math.atan2(-(outer.z - inner.z), outer.x - inner.x), 0)
+        cut = eye.modifiers.new("brow", "BOOLEAN")
+        cut.operation = "DIFFERENCE"
+        cut.object = cutter
+        bpy.context.view_layer.objects.active = eye
+        bpy.ops.object.modifier_apply(modifier="brow")
+        bpy.data.objects.remove(cutter, do_unlink=True)
+        ellipsoid(head + Vector((0.16 * s - 0.035, -0.765, 0.15)), (0.24, 0.1, 0.4), "iris", rot=(0, -10 * s, 0))
+        ellipsoid(head + Vector((0.16 * s - 0.045, -0.805, 0.15)), (0.12, 0.06, 0.24), "black", rot=(0, -10 * s, 0))
+        ellipsoid(head + Vector((0.16 * s - 0.075, -0.825, 0.22)), (0.05, 0.03, 0.07), "white")
         # ears
         bpy.ops.mesh.primitive_cone_add(vertices=40, radius1=0.25, radius2=0.02, depth=0.62,
                                         location=head + Vector((0.44 * s, 0.05, 0.78)), rotation=(0, math.radians(18 * s), 0))
