@@ -1504,6 +1504,7 @@ end)
 -- Edit the look with tools/make_sonic_model.py.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local StarterPlayer = game:GetService("StarterPlayer")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local Model = require(Shared:WaitForChild("SonicModel"))
@@ -1636,8 +1637,17 @@ local function recolor(character, super)
 	end
 end
 
+-- True when you've imported your own Sonic model as StarterPlayer.StarterCharacter.
+-- Then the game uses that model exactly as it is.
+local function usesImportedModel()
+	return StarterPlayer:FindFirstChild("StarterCharacter") ~= nil
+end
+
 -- Safe to call more than once (e.g. when the avatar finishes loading late).
 function SonicLook.apply(character, super)
+	if usesImportedModel() then
+		return
+	end
 	stripAvatar(character)
 	if not buildCostume(character) then
 		paintR6(character, super)
@@ -1646,7 +1656,25 @@ function SonicLook.apply(character, super)
 end
 
 function SonicLook.setSuper(character, on)
-	recolor(character, on)
+	if not usesImportedModel() then
+		recolor(character, on)
+	end
+	local glow = character:FindFirstChild("SuperGlow")
+	if glow then
+		glow:Destroy()
+	end
+	if on and usesImportedModel() then
+		-- Imported models are textured, so instead of recolouring them we wrap
+		-- them in a golden glow.
+		local highlight = Instance.new("Highlight")
+		highlight.Name = "SuperGlow"
+		highlight.FillColor = GOLD
+		highlight.FillTransparency = 0.35
+		highlight.OutlineColor = Color3.fromRGB(255, 250, 200)
+		highlight.OutlineTransparency = 0.2
+		highlight.DepthMode = Enum.HighlightDepthMode.Occluded
+		highlight.Parent = character
+	end
 	local root = character:FindFirstChild("HumanoidRootPart")
 	if not root then
 		return

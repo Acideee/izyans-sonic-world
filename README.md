@@ -61,6 +61,33 @@ still work. To change the look, edit `tools/make_sonic_model.py` and run
 `python3 tools/make_sonic_model.py` to regenerate the JSON. The game ignores players' own
 avatar items so everyone gets the same Sonic.
 
+## Use a real 3D Sonic model (looks like Sonic Speed Simulator)
+
+The built-in Sonic is made from simple shapes. For a smooth, detailed Sonic, import a 3D
+model in Roblox Studio. The game picks it up automatically: every player becomes that
+model, all the controls keep working, and Super Sonic gets a golden glow.
+
+**1. Get a model file.** You need a `.fbx`, `.obj` or `.glb` file of Sonic standing in a
+T-pose or A-pose (arms out). Fan-made models are on sites like Sketchfab, RenderHub and
+Gumroad. Check each one's licence and pick one allowed for personal use. Sonic belongs to
+SEGA, so keep the game private.
+
+**2. Import it.** In Studio, open `IzyansSonicWorld.rbxlx`, go to the **Avatar** tab →
+**Import 3D**, choose the file, set **Rig Type** to **R15**, and click **Import**.
+
+**3. Make it playable.** Select the imported model, then **Avatar** tab → **Avatar Setup**
+→ **Set Up Avatar**. Studio adds a Roblox skeleton automatically, and a ready character
+appears in the Workspace.
+
+**4. Make it the player.** In the Explorer, drag that new character into **StarterPlayer**
+and rename it to exactly `StarterCharacter`. Press **Play**: you are now the new Sonic.
+
+Tips:
+- If he's the wrong size, use the **Scale** tool on the model before step 4 (about 5–6 studs tall is right).
+- To go back to the built-in Sonic, delete `StarterPlayer.StarterCharacter`.
+- Sonic models made for other games often have their own skeleton. Avatar Setup replaces it
+  with a Roblox one, which can occasionally bend oddly; trying another model usually fixes it.
+
 ## Tweaking the game
 
 Everything you might want to change is in `src/shared/Config.lua`: speeds, jump height,
