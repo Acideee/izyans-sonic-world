@@ -12,11 +12,13 @@ Usage (with `pip install bpy`, or `blender -b -P ... -- ...`):
 Outputs: models/<name>.fbx, models/<name>.glb, models/<name>_color.png (name defaults to SonicHedgehog)
 """
 
+import json
 import math
 import os
 import sys
 
 import bpy
+from mathutils import Matrix
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.normpath(os.path.join(HERE, "..", "models"))
@@ -24,6 +26,14 @@ TARGET_TRIS = 19000
 TEXTURE_SIZE = 2048
 ROOT_RIG = "Reference.001"
 SKIP = {"Teeth"}  # hidden inside the head
+# Lip control moves (in studs) that open a confident smirk on the Super Sonic file.
+SMIRK = {
+    "MCH_Mouth_Lip_Low.L": (0.0, 0.0, -0.07),
+    "MCH_Mouth_Lip_Low.R": (0.0, 0.0, -0.05),
+    "MCH_Mouth_Lip_High.L": (0.0, 0.0, 0.02),
+    "MCH_Mouth_Lip.L": (0.05, 0.0, 0.07),
+    "MCH_Mouth_Lip.R": (-0.02, 0.0, 0.02),
+}
 # Eyelid bone poses from the Sonic Hedgehog file (eyes open, determined look).
 OPEN_EYES = [
     ("BrowA_C.001", (0.85, 0.036, 0.0, 0.525), (1, 1, 1)),
@@ -59,6 +69,17 @@ def main(blend_path, name="SonicHedgehog", fur=None):
             if os.path.exists(alt):
                 img.filepath = alt
                 img.reload()
+
+    # Freeze any animation into a fixed pose, so it can't override the pose
+    # changes below (it would undo the smirk and open eyes).
+    bpy.context.scene.frame_set(bpy.context.scene.frame_current)
+    for ob in bpy.data.objects:
+        if ob.type == "ARMATURE":
+            frozen = {pb.name: pb.matrix_basis.copy() for pb in ob.pose.bones}
+            if ob.animation_data:
+                ob.animation_data_clear()
+            for pb in ob.pose.bones:
+                pb.matrix_basis = frozen[pb.name]
 
     root = bpy.data.objects[ROOT_RIG]
     family = descendants_of(root) + [root]
@@ -106,6 +127,25 @@ def main(blend_path, name="SonicHedgehog", fur=None):
             red = m.node_tree.nodes.new("ShaderNodeBsdfDiffuse")
             red.inputs["Color"].default_value = (0.55, 0.01, 0.02, 1)
             m.node_tree.links.new(red.outputs["BSDF"], mout.inputs["Surface"])
+        # Its mouth is posed shut, so give him Sonic's face/mouth-rig pose (saved
+        # from the Sonic Hedgehog file) and open a smirk with the lip controls.
+        face_pose = os.path.join(HERE, "sonic_face_pose.json")
+        if os.path.exists(face_pose):
+            with open(face_pose) as f:
+                for arm_name, bones in json.load(f).items():
+                    ob = bpy.data.objects.get(arm_name)
+                    for bone_name, m in bones.items():
+                        pb = ob.pose.bones.get(bone_name) if ob else None
+                        if pb:
+                            pb.matrix_basis = Matrix(m)
+            bpy.context.view_layer.update()
+        rig = bpy.data.objects.get("rig")
+        if rig:
+            for bone_name, offset in SMIRK.items():
+                pb = rig.pose.bones.get(bone_name)
+                if pb:
+                    pb.matrix = Matrix.Translation(offset) @ pb.matrix
+                    bpy.context.view_layer.update()
         # This file was saved with the eyelids shut: open them like in the
         # Sonic Hedgehog file (these bones move the eyelids).
         for bone, quat, scale in OPEN_EYES:
