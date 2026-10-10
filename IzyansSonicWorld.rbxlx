@@ -3210,7 +3210,7 @@ local gui = new("ScreenGui", {
 ---------------------------------------------------------------------------
 
 local ringPanel = new("Frame", {
-	Position = UDim2.new(0, 16, 0, 12),
+	Position = UDim2.new(0, 16, 0, 64),
 	Size = UDim2.new(0, 190, 0, 64),
 	BackgroundColor3 = Color3.fromRGB(20, 40, 120),
 	BackgroundTransparency = 0.25,
@@ -3241,8 +3241,8 @@ local ringText = label({
 ---------------------------------------------------------------------------
 
 local emeraldBar = new("Frame", {
-	AnchorPoint = Vector2.new(0.5, 0),
-	Position = UDim2.new(0.5, 0, 0, 10),
+	AnchorPoint = Vector2.new(0.5, 1),
+	Position = UDim2.new(0.5, 0, 1, -16),
 	Size = UDim2.new(0, 7 * 46 + 20, 0, 58),
 	BackgroundColor3 = Color3.fromRGB(10, 15, 40),
 	BackgroundTransparency = 0.35,
@@ -3271,16 +3271,17 @@ for i, info in ipairs(Config.Emeralds) do
 end
 
 local questText = label({
-	AnchorPoint = Vector2.new(0.5, 0),
-	Position = UDim2.new(0.5, 0, 0, 72),
-	Size = UDim2.new(0, 620, 0, 30),
+	AnchorPoint = Vector2.new(0.5, 1),
+	Position = UDim2.new(0.5, 0, 1, -82),
+	Size = UDim2.new(0.9, 0, 0, 30),
 	TextScaled = true,
 	Text = "",
 }, gui)
+new("UISizeConstraint", { MaxSize = Vector2.new(620, 30) }, questText)
 
 local distanceText = label({
-	AnchorPoint = Vector2.new(0.5, 0),
-	Position = UDim2.new(0.5, 0, 0, 102),
+	AnchorPoint = Vector2.new(0.5, 1),
+	Position = UDim2.new(0.5, 0, 1, -114),
 	Size = UDim2.new(0, 400, 0, 22),
 	TextScaled = true,
 	Text = "",
@@ -3292,8 +3293,8 @@ local distanceText = label({
 ---------------------------------------------------------------------------
 
 local speedPanel = new("Frame", {
-	AnchorPoint = Vector2.new(1, 0),
-	Position = UDim2.new(1, -16, 0, 12),
+	AnchorPoint = Vector2.new(0, 0),
+	Position = UDim2.new(0, 16, 0, 136),
 	Size = UDim2.new(0, 200, 0, 46),
 	BackgroundColor3 = Color3.fromRGB(10, 15, 40),
 	BackgroundTransparency = 0.35,
@@ -3335,7 +3336,7 @@ local flash = new("Frame", {
 
 local superButton = new("TextButton", {
 	AnchorPoint = Vector2.new(0.5, 0.5),
-	Position = UDim2.new(0.5, 0, 0.72, 0),
+	Position = UDim2.new(0.5, 0, 1, -190),
 	Size = UDim2.new(0, 260, 0, 70),
 	BackgroundColor3 = GOLD,
 	Text = "GO SUPER!",
